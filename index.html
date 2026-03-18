@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CineApp — Cartelera</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #080810;
+    --surface: #0f0f1a;
+    --card: #13131f;
+    --border: #1e1e30;
+    --accent: #e8b84b;
+    --accent2: #c84b6e;
+    --text: #f0eff8;
+    --muted: #6b6a80;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* HERO HEADER */
+  .hero {
+    position: relative;
+    padding: 3rem 2rem 2rem;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(232,184,75,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 50%, rgba(200,75,110,0.08) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-inner { max-width: 1200px; margin: 0 auto; position: relative; }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+  }
+  .logo span { color: var(--accent); }
+  .tagline { font-size: 13px; color: var(--muted); font-weight: 300; margin-bottom: 1.5rem; }
+
+  /* SEARCH */
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    max-width: 520px;
+  }
+  .search-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted); }
+  .btn-search {
+    background: var(--accent);
+    color: #080810;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn-search:hover { background: #d4a43e; }
+  .btn-search:active { transform: scale(0.97); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); border-color: var(--accent); }
+  .tab.active { background: var(--accent); color: #080810; border-color: var(--accent); font-weight: 600; }
+
+  /* MAIN */
+  .main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* GRID */
+  .movies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+  }
+
+  /* CARD */
+  .movie-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    animation: fadeUp 0.4s ease both;
+  }
+  .movie-card:hover {
+    transform: translateY(-6px);
+    border-color: var(--accent);
+    box-shadow: 0 12px 40px rgba(232,184,75,0.15);
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card-poster {
+    width: 100%;
+    aspect-ratio: 2/3;
+    object-fit: cover;
+    display: block;
+    background: var(--surface);
+  }
+  .card-poster.no-img {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+  }
+  .card-body { padding: 10px 12px 12px; }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-meta { display: flex; align-items: center; justify-content: space-between; }
+  .card-year { font-size: 11px; color: var(--muted); }
+  .card-rating {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .card-rating::before { content: '★'; }
+
+  /* MODAL */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    backdrop-filter: blur(6px);
+  }
+  .overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 760px;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.95);
+    transition: transform 0.25s;
+  }
+  .overlay.open .modal { transform: scale(1); }
+  .modal-top {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+  .modal-poster {
+    width: 160px;
+    min-width: 160px;
+    border-radius: 10px;
+    object-fit: cover;
+    aspect-ratio: 2/3;
+    background: var(--surface);
+  }
+  .modal-info { flex: 1; }
+  .modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-weight: 900;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .modal-tagline {
+    font-size: 13px;
+    color: var(--accent);
+    font-style: italic;
+    margin-bottom: 12px;
+  }
+  .modal-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid;
+  }
+  .badge-genre { border-color: var(--border); color: var(--muted); }
+  .badge-rating { border-color: var(--accent); color: var(--accent); background: rgba(232,184,75,0.1); }
+  .badge-year { border-color: var(--border); color: var(--text); }
+  .modal-overview {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #c0bfd0;
+    margin-bottom: 1rem;
+  }
+  .modal-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .stat { text-align: center; }
+  .stat-val { font-size: 1.3rem; font-weight: 700; color: var(--accent); font-family: 'Playfair Display', serif; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .modal-close:hover { background: var(--border); }
+
+  /* SKELETON */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--card) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: var(--radius);
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .skeleton-card { height: 300px; }
+
+  /* EMPTY / ERROR */
+  .empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty h3 { font-size: 1.2rem; margin-bottom: 0.5rem; color: var(--text); }
+
+  /* LOAD MORE */
+  .load-more-wrap { text-align: center; margin-top: 2.5rem; }
+  .btn-load {
+    padding: 12px 32px;
+    border-radius: 10px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-load:hover { background: var(--accent); color: #080810; }
+
+  /* ATTRIBUTION */
+  .attribution {
+    text-align: center;
+    padding: 2rem;
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    margin-top: 3rem;
+  }
+  .attribution img { height: 18px; vertical-align: middle; margin-left: 6px; opacity: 0.6; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="logo">Cine<span>App</span></div>
+    <div class="tagline">Cartelera en tiempo real · Datos de TMDB</div>
+    <div class="search-bar">
+      <input class="search-input" id="search-input" type="text"
+        placeholder="Buscar película..." 
+        onkeydown="if(event.key==='Enter') doSearch()"/>
+      <button class="btn-search" onclick="doSearch()">Buscar</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="setTab('popular', this)">Populares</button>
+      <button class="tab" onclick="setTab('now_playing', this)">En cartelera</button>
+      <button class="tab" onclick="setTab('top_rated', this)">Mejor valoradas</button>
+      <button class="tab" onclick="setTab('upcoming', this)">Próximamente</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="section-title" id="section-title">Películas populares</div>
+  <div class="movies-grid" id="movies-grid"></div>
+  <div class="load-more-wrap" id="load-more-wrap" style="display:none">
+    <button class="btn-load" onclick="loadMore()">Ver más películas</button>
+  </div>
+</div>
+
+<div class="attribution">
+  Datos proporcionados por
+  <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg" alt="TMDB"/>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="closeOnBg(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-top" id="modal-top"></div>
+    <div class="modal-stats" id="modal-stats"></div>
+  </div>
+</div>
+
+<script>
+// ⚠️ IMPORTANTE: En producción mueve esta key a una variable de entorno
+const API_KEY = '6858f255b55474d4b378bee99465f24a';
+const BASE    = 'https://api.themoviedb.org/3';
+const IMG     = 'https://image.tmdb.org/t/p/w500';
+const IMG_BIG = 'https://image.tmdb.org/t/p/w780';
+
+const SECTION_LABELS = {
+  popular:     'Películas populares',
+  now_playing: 'En cartelera ahora',
+  top_rated:   'Mejor valoradas',
+  upcoming:    'Próximamente',
+  search:      'Resultados de búsqueda',
+};
+
+let currentTab  = 'popular';
+let currentPage = 1;
+let totalPages  = 1;
+let currentQuery = '';
+let allMovies   = [];
+
+// ---- FETCH HELPERS ----
+async function fetchMovies(endpoint, page = 1) {
+  const url = `${BASE}${endpoint}&language=es-ES&page=${page}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Error al obtener películas');
+  return res.json();
+}
+
+async function fetchDetails(id) {
+  const url = `${BASE}/movie/${id}?api_key=${API_KEY}&language=es-ES`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+// ---- RENDER ----
+function showSkeletons() {
+  const grid = document.getElementById('movies-grid');
+  grid.innerHTML = Array(12).fill(0).map((_,i) =>
+    `<div class="skeleton skeleton-card" style="animation-delay:${i*0.05}s"></div>`
+  ).join('');
+}
+
+function renderMovies(movies, append = false) {
+  const grid = document.getElementById('movies-grid');
+  if (!append) grid.innerHTML = '';
+
+  if (!movies.length && !append) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <div class="empty-icon">🎬</div>
+      <h3>No se encontraron películas</h3>
+      <p>Intenta con otro término de búsqueda</p>
+    </div>`;
+    return;
+  }
+
+  movies.forEach((m, i) => {
+    const card = document.createElement('div');
+    card.className = 'movie-card';
+    card.style.animationDelay = `${(append ? i : i % 12) * 0.05}s`;
+
+    const year = m.release_date ? m.release_date.slice(0, 4) : '—';
+    const rating = m.vote_average ? m.vote_average.toFixed(1) : '—';
+    const posterUrl = m.poster_path ? IMG + m.poster_path : null;
+
+    card.innerHTML = posterUrl
+      ? `<img class="card-poster" src="${posterUrl}" alt="${m.title}" loading="lazy"/>`
+      : `<div class="card-poster no-img">🎬</div>`;
+
+    card.innerHTML += `
+      <div class="card-body">
+        <div class="card-title">${m.title}</div>
+        <div class="card-meta">
+          <span class="card-year">${year}</span>
+          <span class="card-rating">${rating}</span>
+        </div>
+      </div>`;
+
+    card.onclick = () => openModal(m.id);
+    grid.appendChild(card);
+  });
+}
+
+// ---- LOAD DATA ----
+async function loadSection(tab, page = 1, append = false) {
+  currentTab = tab;
+  currentPage = page;
+  if (!append) showSkeletons();
+
+  const endpoints = {
+    popular:     `/movie/popular?api_key=${API_KEY}`,
+    now_playing: `/movie/now_playing?api_key=${API_KEY}`,
+    top_rated:   `/movie/top_rated?api_key=${API_KEY}`,
+    upcoming:    `/movie/upcoming?api_key=${API_KEY}`,
+  };
+
+  try {
+    const data = await fetchMovies(endpoints[tab], page);
+    totalPages = data.total_pages;
+    if (append) {
+      allMovies = [...allMovies, ...data.results];
+    } else {
+      allMovies = data.results;
+    }
+    renderMovies(append ? data.results : allMovies, append);
+    document.getElementById('load-more-wrap').style.display =
+      currentPage < Math.min(totalPages, 10) ? 'block' : 'none';
+  } catch(e) {
+    document.getElementById('movies-grid').innerHTML =
+      `<div class="empty" style="grid-column:1/-1">
+        <div class="empty-icon">⚠️</div>
+        <h3>Error al cargar películas</h3>
+        <p>${e.message}</p>
+      </div>`;
+  }
+}
+
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) { loadSection(currentTab); return; }
+
+  currentQuery = q;
+  document.getElementById('section-title').textContent = `Resultados para "${q}"`;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  showSkeletons();
+
+  try {
+    const data = await fetchMovies(`/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(q)}`);
+    totalPages = data.total_pages;
+    allMovies = data.results;
+    renderMovies(allMovies);
+    document.getElementById('load-more-wrap').style.display = 'none';
+  } catch(e) {
+    document.getElementById('movies-grid').innerHTML =
+      `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Error en la búsqueda</h3></div>`;
+  }
+}
+
+async function loadMore() {
+  await loadSection(currentTab, currentPage + 1, true);
+}
+
+// ---- MODAL ----
+async function openModal(id) {
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('modal-top').innerHTML =
+    `<div class="skeleton" style="width:160px;min-width:160px;aspect-ratio:2/3;border-radius:10px"></div>
+     <div style="flex:1;display:flex;flex-direction:column;gap:10px;padding-top:4px">
+       <div class="skeleton" style="height:32px;width:70%;border-radius:6px"></div>
+       <div class="skeleton" style="height:16px;width:40%;border-radius:6px"></div>
+       <div class="skeleton" style="height:80px;border-radius:6px"></div>
+     </div>`;
+  document.getElementById('modal-stats').innerHTML = '';
+
+  try {
+    const m = await fetchDetails(id);
+    const year = m.release_date ? m.release_date.slice(0,4) : '—';
+    const rating = m.vote_average ? m.vote_average.toFixed(1) : '—';
+    const runtime = m.runtime ? `${Math.floor(m.runtime/60)}h ${m.runtime%60}m` : '—';
+    const genres = (m.genres || []).map(g => g.name).slice(0,3);
+    const posterUrl = m.poster_path ? IMG_BIG + m.poster_path : null;
+
+    document.getElementById('modal-top').innerHTML = `
+      ${posterUrl
+        ? `<img class="modal-poster" src="${posterUrl}" alt="${m.title}"/>`
+        : `<div class="modal-poster" style="display:flex;align-items:center;justify-content:center;font-size:3rem">🎬</div>`}
+      <div class="modal-info">
+        <div class="modal-title">${m.title}</div>
+        ${m.tagline ? `<div class="modal-tagline">"${m.tagline}"</div>` : ''}
+        <div class="modal-badges">
+          <span class="badge badge-rating">★ ${rating}</span>
+          <span class="badge badge-year">${year}</span>
+          ${genres.map(g => `<span class="badge badge-genre">${g}</span>`).join('')}
+        </div>
+        <div class="modal-overview">${m.overview || 'Sin descripción disponible.'}</div>
+      </div>`;
+
+    document.getElementById('modal-stats').innerHTML = `
+      <div class="stat">
+        <div class="stat-val">${rating}</div>
+        <div class="stat-label">Puntuación</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">${runtime}</div>
+        <div class="stat-label">Duración</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">${m.vote_count ? m.vote_count.toLocaleString() : '—'}</div>
+        <div class="stat-label">Votos</div>
+      </div>`;
+  } catch(e) {
+    document.getElementById('modal-top').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div><h3>Error al cargar detalles</h3></div>`;
+  }
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function closeOnBg(e) {
+  if (e.target === document.getElementById('overlay')) closeModal();
+}
+
+// ---- TABS ----
+function setTab(tab, btn) {
+  currentQuery = '';
+  document.getElementById('search-input').value = '';
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('section-title').textContent = SECTION_LABELS[tab];
+  loadSection(tab);
+}
+
+// ---- INIT ----
+loadSection('popular');
+</script>
+</body>
+</html>
