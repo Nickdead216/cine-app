@@ -255,7 +255,8 @@
     font-weight: 600;
     border: 1px solid;
   }
-  .badge-genre { border-color: var(--border); color: var(--muted); }
+  .badge-genre { border-color: var(--border); color: var(--muted); transition: all 0.15s; }
+  .badge-genre:hover { border-color: var(--accent); color: var(--accent); background: rgba(232,184,75,0.08); }
   .badge-rating { border-color: var(--accent); color: var(--accent); background: rgba(232,184,75,0.1); }
   .badge-year { border-color: var(--border); color: var(--text); }
   .modal-overview {
@@ -339,6 +340,54 @@
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* REVIEWS */
+  .modal-reviews {
+    padding: 1.25rem 1.5rem 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .reviews-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--text);
+  }
+  .review-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .review-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .review-avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #080810;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .review-author { font-size: 13px; font-weight: 600; }
+  .review-rating { font-size: 12px; color: var(--accent); margin-left: auto; }
+  .review-content {
+    font-size: 13px;
+    color: #a0a0b8;
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .review-empty { font-size: 13px; color: var(--muted); text-align: center; padding: 1rem 0; }
 </style>
 </head>
 <body>
@@ -351,6 +400,9 @@
       <input class="search-input" id="search-input" type="text"
         placeholder="Buscar película..." 
         onkeydown="if(event.key==='Enter') doSearch()"/>
+      <select class="search-input" id="genre-select" onchange="filterByGenre()" style="max-width:180px;cursor:pointer">
+        <option value="">Todos los géneros</option>
+      </select>
       <button class="btn-search" onclick="doSearch()">Buscar</button>
     </div>
     <div class="tabs">
@@ -381,6 +433,7 @@
     <button class="modal-close" onclick="closeModal()">✕</button>
     <div class="modal-top" id="modal-top"></div>
     <div class="modal-stats" id="modal-stats"></div>
+    <div class="modal-reviews" id="modal-reviews"></div>
   </div>
 </div>
 
@@ -403,6 +456,7 @@ let currentTab  = 'popular';
 let currentPage = 1;
 let totalPages  = 1;
 let currentQuery = '';
+let currentGenre = '';
 let allMovies   = [];
 
 // ---- FETCH HELPERS ----
@@ -417,6 +471,61 @@ async function fetchDetails(id) {
   const url = `${BASE}/movie/${id}?api_key=${API_KEY}&language=es-ES`;
   const res = await fetch(url);
   return res.json();
+}
+
+async function fetchReviews(id) {
+  const url = `${BASE}/movie/${id}/reviews?api_key=${API_KEY}&language=en-US&page=1`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+async function loadGenres() {
+  try {
+    const res = await fetch(`${BASE}/genre/movie/list?api_key=${API_KEY}&language=es-ES`);
+    const data = await res.json();
+    const select = document.getElementById('genre-select');
+    data.genres.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = g.name;
+      select.appendChild(opt);
+    });
+  } catch(e) { console.error('Error cargando géneros', e); }
+}
+
+async function filterByGenre() {
+  currentGenre = document.getElementById('genre-select').value;
+  currentPage = 1;
+  document.getElementById('search-input').value = '';
+  currentQuery = '';
+
+  if (!currentGenre) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.tab').classList.add('active');
+    loadSection('popular');
+    return;
+  }
+
+  // Quitar tab activo para indicar que hay filtro activo
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+
+  const genreName = document.getElementById('genre-select').selectedOptions[0].text;
+  document.getElementById('section-title').textContent = `Género: ${genreName}`;
+  showSkeletons();
+
+  try {
+    const data = await fetchMovies(
+      `/discover/movie?api_key=${API_KEY}&with_genres=${currentGenre}&sort_by=popularity.desc`
+    );
+    totalPages = data.total_pages;
+    allMovies = data.results;
+    renderMovies(allMovies);
+    document.getElementById('load-more-wrap').style.display =
+      currentPage < Math.min(totalPages, 10) ? 'block' : 'none';
+  } catch(e) {
+    document.getElementById('movies-grid').innerHTML =
+      `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Error al filtrar</h3></div>`;
+  }
 }
 
 // ---- RENDER ----
@@ -537,9 +646,14 @@ async function openModal(id) {
        <div class="skeleton" style="height:80px;border-radius:6px"></div>
      </div>`;
   document.getElementById('modal-stats').innerHTML = '';
+  document.getElementById('modal-reviews').innerHTML = '';
 
   try {
-    const m = await fetchDetails(id);
+    const [m, reviewsData] = await Promise.all([
+      fetchDetails(id),
+      fetchReviews(id)
+    ]);
+
     const year = m.release_date ? m.release_date.slice(0,4) : '—';
     const rating = m.vote_average ? m.vote_average.toFixed(1) : '—';
     const runtime = m.runtime ? `${Math.floor(m.runtime/60)}h ${m.runtime%60}m` : '—';
@@ -556,7 +670,10 @@ async function openModal(id) {
         <div class="modal-badges">
           <span class="badge badge-rating">★ ${rating}</span>
           <span class="badge badge-year">${year}</span>
-          ${genres.map(g => `<span class="badge badge-genre">${g}</span>`).join('')}
+          ${(m.genres || []).slice(0,3).map(g => 
+            `<span class="badge badge-genre" style="cursor:pointer" 
+              onclick="filterByGenreFromModal(${g.id}, '${g.name}')">${g.name}</span>`
+          ).join('')}
         </div>
         <div class="modal-overview">${m.overview || 'Sin descripción disponible.'}</div>
       </div>`;
@@ -574,10 +691,111 @@ async function openModal(id) {
         <div class="stat-val">${m.vote_count ? m.vote_count.toLocaleString() : '—'}</div>
         <div class="stat-label">Votos</div>
       </div>`;
+
+    // RESEÑAS
+    const reviews = (reviewsData.results || []).slice(0, 5);
+    const totalReviews = reviewsData.total_results || 0;
+    const reviewsEl = document.getElementById('modal-reviews');
+    reviewsEl.innerHTML = `<div class="reviews-title">Opiniones (${totalReviews})</div>`;
+
+    if (!reviews.length) {
+      reviewsEl.innerHTML += `<div class="review-empty">Sin opiniones disponibles para esta película.</div>`;
+    } else {
+      reviews.forEach(r => {
+        const initial = r.author ? r.author[0].toUpperCase() : '?';
+        const ratingBadge = r.author_details?.rating
+          ? `<span class="review-rating">★ ${r.author_details.rating}/10</span>` : '';
+        const content = r.content.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        reviewsEl.innerHTML += `
+          <div class="review-card">
+            <div class="review-header">
+              <div class="review-avatar">${initial}</div>
+              <span class="review-author">${r.author}</span>
+              ${ratingBadge}
+            </div>
+            <div class="review-content">${content}</div>
+          </div>`;
+      });
+
+      if (totalReviews > 5) {
+        reviewsEl.innerHTML += `
+          <button class="btn-load" style="width:100%;margin-top:6px"
+            onclick="loadMoreReviews(${id}, 2, this)">
+            Ver más opiniones (${totalReviews - 5} restantes)
+          </button>`;
+      }
+    }
+
   } catch(e) {
     document.getElementById('modal-top').innerHTML =
       `<div class="empty"><div class="empty-icon">⚠️</div><h3>Error al cargar detalles</h3></div>`;
   }
+}
+
+async function loadMoreReviews(movieId, page, btn) {
+  btn.textContent = 'Cargando...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${BASE}/movie/${movieId}/reviews?api_key=${API_KEY}&language=en-US&page=${page}`);
+    const data = await res.json();
+    const reviewsEl = document.getElementById('modal-reviews');
+    btn.remove();
+
+    data.results.forEach(r => {
+      const initial = r.author ? r.author[0].toUpperCase() : '?';
+      const ratingBadge = r.author_details?.rating
+        ? `<span class="review-rating">★ ${r.author_details.rating}/10</span>` : '';
+      const content = r.content.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const card = document.createElement('div');
+      card.className = 'review-card';
+      card.innerHTML = `
+        <div class="review-header">
+          <div class="review-avatar">${initial}</div>
+          <span class="review-author">${r.author}</span>
+          ${ratingBadge}
+        </div>
+        <div class="review-content">${content}</div>`;
+      reviewsEl.appendChild(card);
+    });
+
+    if (page < data.total_pages) {
+      const loaded = (page) * 20;
+      const remaining = data.total_results - loaded;
+      const newBtn = document.createElement('button');
+      newBtn.className = 'btn-load';
+      newBtn.style.cssText = 'width:100%;margin-top:6px';
+      newBtn.textContent = `Ver más opiniones (${remaining} restantes)`;
+      newBtn.onclick = () => loadMoreReviews(movieId, page + 1, newBtn);
+      reviewsEl.appendChild(newBtn);
+    }
+  } catch(e) {
+    btn.textContent = 'Error al cargar — intenta de nuevo';
+    btn.disabled = false;
+  }
+}
+
+function filterByGenreFromModal(genreId, genreName) {
+  closeModal();
+  currentGenre = genreId;
+  currentPage = 1;
+  document.getElementById('search-input').value = '';
+  currentQuery = '';
+  document.getElementById('genre-select').value = genreId;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-title').textContent = `Género: ${genreName}`;
+  showSkeletons();
+  fetchMovies(`/discover/movie?api_key=${API_KEY}&with_genres=${genreId}&sort_by=popularity.desc`)
+    .then(data => {
+      totalPages = data.total_pages;
+      allMovies = data.results;
+      renderMovies(allMovies);
+      document.getElementById('load-more-wrap').style.display =
+        currentPage < Math.min(totalPages, 10) ? 'block' : 'none';
+    })
+    .catch(() => {
+      document.getElementById('movies-grid').innerHTML =
+        `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Error al filtrar</h3></div>`;
+    });
 }
 
 function closeModal() {
@@ -591,7 +809,9 @@ function closeOnBg(e) {
 // ---- TABS ----
 function setTab(tab, btn) {
   currentQuery = '';
+  currentGenre = '';
   document.getElementById('search-input').value = '';
+  document.getElementById('genre-select').value = '';
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('section-title').textContent = SECTION_LABELS[tab];
@@ -599,6 +819,7 @@ function setTab(tab, btn) {
 }
 
 // ---- INIT ----
+loadGenres();
 loadSection('popular');
 </script>
 </body>
